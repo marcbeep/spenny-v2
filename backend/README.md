@@ -135,3 +135,50 @@ Spenny helps users manage income and expenses using zero-based budgeting. Each u
 - **Row-Level Security (RLS)** ensures users access only their own data.
 - **Supabase Auth** handles authentication.
 - **API endpoints** enforce user-based data filtering.
+
+### Existing RLS Policies
+
+Users
+
+```
+CREATE POLICY "users_select" ON users FOR SELECT TO public USING (id = auth.uid());
+CREATE POLICY "users_update" ON users FOR UPDATE TO public USING (id = auth.uid());
+CREATE POLICY "users_insert" ON users FOR INSERT TO public WITH CHECK (auth.uid() = id);
+CREATE POLICY "users_delete" ON users FOR DELETE TO public USING (id = auth.uid());
+```
+
+Budgets
+
+```
+CREATE POLICY "select_budgets" ON budgets FOR SELECT TO public USING (user_id = auth.uid());
+CREATE POLICY "budgets_insert" ON budgets FOR INSERT TO public WITH CHECK (user_id = auth.uid());
+CREATE POLICY "budgets_update" ON budgets FOR UPDATE TO public USING (user_id = auth.uid());
+CREATE POLICY "budgets_delete" ON budgets FOR DELETE TO public USING (user_id = auth.uid());
+```
+
+Categories
+
+```
+CREATE POLICY "categories_select" ON categories FOR SELECT TO public USING (budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())));
+CREATE POLICY "categories_insert" ON categories FOR INSERT TO public WITH CHECK (budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())));
+CREATE POLICY "categories_update" ON categories FOR UPDATE TO public USING (budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())));
+CREATE POLICY "categories_delete" ON categories FOR DELETE TO public USING (budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())));
+```
+
+Accounts
+
+```
+CREATE POLICY "accounts_select" ON accounts FOR SELECT TO public USING (budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())));
+CREATE POLICY "accounts_insert" ON accounts FOR INSERT TO public WITH CHECK (budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())));
+CREATE POLICY "accounts_update" ON accounts FOR UPDATE TO public USING (budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())));
+CREATE POLICY "accounts_delete" ON accounts FOR DELETE TO public USING (budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())));
+```
+
+Transactions
+
+```
+CREATE POLICY "transactions_select" ON transactions FOR SELECT TO public USING (account_id IN (SELECT accounts.id FROM accounts WHERE (accounts.budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())))));
+CREATE POLICY "transactions_insert" ON transactions FOR INSERT TO public WITH CHECK (account_id IN (SELECT accounts.id FROM accounts WHERE (accounts.budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())))));
+CREATE POLICY "transactions_update" ON transactions FOR UPDATE TO public USING (account_id IN (SELECT accounts.id FROM accounts WHERE (accounts.budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())))));
+CREATE POLICY "transactions_delete" ON transactions FOR DELETE TO public USING (account_id IN (SELECT accounts.id FROM accounts WHERE (accounts.budget_id IN (SELECT budgets.id FROM budgets WHERE (budgets.user_id = auth.uid())))));
+```

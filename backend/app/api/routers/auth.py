@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from supabase import Client
-from app.db.deps import get_supabase
+from app.db.deps import get_supabase, get_supabase_admin
 from app.models.auth import UserLogin, UserRegister, Token
 from app.utils.auth import create_access_token
 from passlib.context import CryptContext
@@ -18,7 +18,11 @@ def get_password_hash(password: str) -> str:
 
 
 @router.post("/register", response_model=Token)
-async def register(user_in: UserRegister, db: Client = Depends(get_supabase)) -> Token:
+async def register(
+    user_in: UserRegister,
+    db: Client = Depends(get_supabase),
+    admin_db: Client = Depends(get_supabase_admin),
+) -> Token:
     """
     Register a new user.
     """
@@ -46,9 +50,9 @@ async def register(user_in: UserRegister, db: Client = Depends(get_supabase)) ->
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to create user"
             )
 
-        # Create user in database
+        # Create user in database using admin client to bypass RLS
         result = (
-            db.table("users")
+            admin_db.table("users")
             .insert(
                 {
                     "id": auth_response.user.id,
