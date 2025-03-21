@@ -37,7 +37,7 @@ def get_supabase_client() -> Client:
         )
 
         # Test the connection
-        client.table("user").select("*").limit(1).execute()
+        client.table("users").select("*").limit(1).execute()
         return client
 
     except Exception as e:

@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
     SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
 
+    # JWT
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "")
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
     class Config:
         env_file = ".env"
 

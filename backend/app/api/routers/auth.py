@@ -54,7 +54,6 @@ async def register(user_in: UserRegister, db: Client = Depends(get_supabase)) ->
                     "id": auth_response.user.id,
                     "email": user_in.email,
                     "name": user_in.name,
-                    "hashed_password": get_password_hash(user_in.password),
                 }
             )
             .execute()

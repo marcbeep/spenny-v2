@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
+from uuid import UUID
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -58,4 +59,15 @@ async def get_current_user(
 
 
 def verify_user_access(user_id: UUID, current_user_id: UUID) -> bool:
-    pass
+    """
+    Verify if the current user has access to resources belonging to the specified user.
+    This simple implementation only allows access if the current user is the owner of the resource.
+
+    Args:
+        user_id: ID of the user who owns the resource
+        current_user_id: ID of the current authenticated user
+
+    Returns:
+        bool: True if access is allowed, False otherwise
+    """
+    return str(user_id) == str(current_user_id)
