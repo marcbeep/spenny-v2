@@ -128,22 +128,32 @@ async def get_category(
     Get a specific category by ID.
     """
     try:
-        # Use a join to verify the category belongs to user's budget
-        result = (
-            db.table("categories")
-            .select("categories.*")
-            .eq("categories.id", str(category_id))
-            .join("budgets", "categories.budget_id", "budgets.id")
-            .eq("budgets.user_id", current_user_id)
-            .execute()
-        )
+        # First get the category
+        result = db.table("categories").select("*").eq("id", str(category_id)).execute()
 
         if not result.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
             )
 
-        return CategoryRead(**result.data[0])
+        category = result.data[0]
+
+        # Now verify the budget belongs to the user
+        budget_check = (
+            db.table("budgets")
+            .select("id")
+            .eq("id", category["budget_id"])
+            .eq("user_id", current_user_id)
+            .execute()
+        )
+
+        if not budget_check.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Category not found or you don't have access to it",
+            )
+
+        return CategoryRead(**category)
 
     except HTTPException:
         raise
@@ -164,23 +174,35 @@ async def update_category(
     Update a category.
     """
     try:
-        # Check if category exists and belongs to user's budget
-        existing = (
-            db.table("categories")
-            .select("categories.*")
-            .eq("categories.id", str(category_id))
-            .join("budgets", "categories.budget_id", "budgets.id")
-            .eq("budgets.user_id", current_user_id)
-            .execute()
+        # First get the category
+        existing_result = (
+            db.table("categories").select("*").eq("id", str(category_id)).execute()
         )
 
-        if not existing.data:
+        if not existing_result.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
             )
 
-        # Check if budget_id belongs to user
-        if existing.data[0]["budget_id"] != str(category_in.budget_id):
+        existing_category = existing_result.data[0]
+
+        # Verify the current budget belongs to the user
+        current_budget_check = (
+            db.table("budgets")
+            .select("id")
+            .eq("id", existing_category["budget_id"])
+            .eq("user_id", current_user_id)
+            .execute()
+        )
+
+        if not current_budget_check.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Category not found or you don't have access to it",
+            )
+
+        # Check if new budget_id belongs to user
+        if existing_category["budget_id"] != str(category_in.budget_id):
             budget_check = (
                 db.table("budgets")
                 .select("id")
@@ -228,19 +250,31 @@ async def delete_category(
     Delete a category.
     """
     try:
-        # Check if category exists and belongs to user's budget
-        existing = (
-            db.table("categories")
-            .select("categories.*")
-            .eq("categories.id", str(category_id))
-            .join("budgets", "categories.budget_id", "budgets.id")
-            .eq("budgets.user_id", current_user_id)
+        # First get the category
+        existing_result = (
+            db.table("categories").select("*").eq("id", str(category_id)).execute()
+        )
+
+        if not existing_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
+            )
+
+        existing_category = existing_result.data[0]
+
+        # Verify the budget belongs to the user
+        budget_check = (
+            db.table("budgets")
+            .select("id")
+            .eq("id", existing_category["budget_id"])
+            .eq("user_id", current_user_id)
             .execute()
         )
 
-        if not existing.data:
+        if not budget_check.data:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Category not found or you don't have access to it",
             )
 
         # Delete the category
