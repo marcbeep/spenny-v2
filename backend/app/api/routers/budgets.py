@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from supabase import Client
 from app.db.deps import get_supabase
 from app.models.budget import Budget, BudgetCreate, BudgetRead
+from app.utils.auth import get_current_user
 from uuid import UUID
 
 router = APIRouter()
@@ -11,7 +12,7 @@ router = APIRouter()
 @router.post("/", response_model=BudgetRead, status_code=status.HTTP_201_CREATED)
 async def create_budget(
     budget_in: BudgetCreate,
-    user_id: UUID,  # TODO: Get this from auth token
+    current_user_id: str = Depends(get_current_user),
     db: Client = Depends(get_supabase),
 ) -> BudgetRead:
     """
@@ -21,7 +22,7 @@ async def create_budget(
         # If this is set as default, unset any existing default budget
         if budget_in.is_default:
             db.table("budgets").update({"is_default": False}).eq(
-                "user_id", str(user_id)
+                "user_id", current_user_id
             ).execute()
 
         # Create the new budget
@@ -31,7 +32,7 @@ async def create_budget(
                 {
                     "name": budget_in.name,
                     "is_default": budget_in.is_default,
-                    "user_id": str(user_id),
+                    "user_id": current_user_id,
                 }
             )
             .execute()
@@ -53,13 +54,15 @@ async def create_budget(
 
 @router.get("/", response_model=List[BudgetRead])
 async def get_budgets(
-    user_id: UUID, db: Client = Depends(get_supabase)  # TODO: Get this from auth token
+    current_user_id: str = Depends(get_current_user), db: Client = Depends(get_supabase)
 ) -> List[BudgetRead]:
     """
     Get all budgets for the user.
     """
     try:
-        result = db.table("budgets").select("*").eq("user_id", str(user_id)).execute()
+        result = (
+            db.table("budgets").select("*").eq("user_id", current_user_id).execute()
+        )
         return [BudgetRead(**budget) for budget in result.data]
 
     except Exception as e:
@@ -71,7 +74,7 @@ async def get_budgets(
 @router.get("/{budget_id}", response_model=BudgetRead)
 async def get_budget(
     budget_id: UUID,
-    user_id: UUID,  # TODO: Get this from auth token
+    current_user_id: str = Depends(get_current_user),
     db: Client = Depends(get_supabase),
 ) -> BudgetRead:
     """
@@ -82,7 +85,7 @@ async def get_budget(
             db.table("budgets")
             .select("*")
             .eq("id", str(budget_id))
-            .eq("user_id", str(user_id))
+            .eq("user_id", current_user_id)
             .execute()
         )
 
@@ -105,7 +108,7 @@ async def get_budget(
 async def update_budget(
     budget_id: UUID,
     budget_in: BudgetCreate,
-    user_id: UUID,  # TODO: Get this from auth token
+    current_user_id: str = Depends(get_current_user),
     db: Client = Depends(get_supabase),
 ) -> BudgetRead:
     """
@@ -117,7 +120,7 @@ async def update_budget(
             db.table("budgets")
             .select("*")
             .eq("id", str(budget_id))
-            .eq("user_id", str(user_id))
+            .eq("user_id", current_user_id)
             .execute()
         )
 
@@ -129,7 +132,7 @@ async def update_budget(
         # If setting as default, unset other defaults
         if budget_in.is_default:
             db.table("budgets").update({"is_default": False}).eq(
-                "user_id", str(user_id)
+                "user_id", current_user_id
             ).neq("id", str(budget_id)).execute()
 
         # Update the budget
@@ -137,7 +140,7 @@ async def update_budget(
             db.table("budgets")
             .update({"name": budget_in.name, "is_default": budget_in.is_default})
             .eq("id", str(budget_id))
-            .eq("user_id", str(user_id))
+            .eq("user_id", current_user_id)
             .execute()
         )
 
@@ -154,7 +157,7 @@ async def update_budget(
 @router.delete("/{budget_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_budget(
     budget_id: UUID,
-    user_id: UUID,  # TODO: Get this from auth token
+    current_user_id: str = Depends(get_current_user),
     db: Client = Depends(get_supabase),
 ) -> None:
     """
@@ -166,7 +169,7 @@ async def delete_budget(
             db.table("budgets")
             .select("*")
             .eq("id", str(budget_id))
-            .eq("user_id", str(user_id))
+            .eq("user_id", current_user_id)
             .execute()
         )
 
@@ -177,7 +180,7 @@ async def delete_budget(
 
         # Delete the budget
         db.table("budgets").delete().eq("id", str(budget_id)).eq(
-            "user_id", str(user_id)
+            "user_id", current_user_id
         ).execute()
 
     except HTTPException:
